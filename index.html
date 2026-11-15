@@ -1,1 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Daily Word</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Adsgram (rewarded ads) -->
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+<style>
+  :root{--bg:#121213;--tile:#3a3a3c;--absent:#3a3a3c;--present:#b59f3b;--correct:#538d4e;--key:#818384;--text:#fff}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+       display:flex;flex-direction:column;align-items:center;min-height:100vh;user-select:none}
+  header{width:100%;max-width:500px;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #333}
+  h1{margin:0;font-size:22px;letter-spacing:2px}
+  .pill{background:#272729;border-radius:14px;padding:5px 10px;font-size:14px}
+  #board{display:grid;grid-template-rows:repeat(6,1fr);gap:6px;margin:14px 0;width:min(300px,80vw)}
+  .row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .tile{aspect-ratio:1;border:2px solid var(--tile);display:flex;align-items:center;justify-content:center;
+        font-size:28px;font-weight:700;text-transform:uppercase;transition:transform .25s}
+  .tile.filled{border-color:#565758}
+  .tile.correct{background:var(--correct);border-color:var(--correct)}
+  .tile.present{background:var(--present);border-color:var(--present)}
+  .tile.absent{background:var(--absent);border-color:var(--absent)}
+  .tile.hint{border-color:var(--present);color:var(--present)}
+  .shake{animation:shake .4s}
+  @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+  #msg{height:22px;font-size:14px;color:#ddd;margin-bottom:4px}
+  #actions{display:flex;gap:8px;margin-bottom:10px}
+  button.act{background:#2a6df4;color:#fff;border:0;border-radius:10px;padding:9px 14px;font-size:14px;font-weight:600}
+  button.act.alt{background:#272729}
+  #kb{width:100%;max-width:500px;padding:0 6px 14px}
+  .krow{display:flex;justify-content:center;gap:5px;margin-bottom:6px}
+  .key{flex:1;max-width:42px;height:52px;border:0;border-radius:5px;background:var(--key);color:#fff;font-weight:700;font-size:15px;text-transform:uppercase}
+  .key.wide{max-width:64px;font-size:12px}
+  .key.correct{background:var(--correct)}.key.present{background:var(--present)}.key.absent{background:#3a3a3c}
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px}
+  #modal.show{display:flex}
+  .card{background:#1f1f21;border-radius:16px;padding:20px;width:100%;max-width:360px;text-align:center}
+  .card h2{margin:0 0 6px}
+  .stats{display:flex;justify-content:space-around;margin:14px 0}
+  .stats b{display:block;font-size:26px}.stats span{font-size:12px;color:#aaa}
+  #lb{text-align:left;font-size:14px;margin:8px 0}
+  #lb div{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #2c2c2e}
+</style>
+</head>
+<body>
+<header>
+  <div class="pill" id="streak">🔥 0</div>
+  <h1>DAILY WORD</h1>
+  <div class="pill" id="hints">💡 1</div>
+</header>
 
+<div id="board"></div>
+<div id="msg"></div>
+<div id="actions">
+  <button class="act" id="hintBtn">💡 Hint (watch ad)</button>
+  <button class="act alt" id="statsBtn">📊 Stats</button>
+</div>
+<div id="kb"></div>
+
+<div id="modal"><div class="card" id="card"></div></div>
+
+<script>
+/* ================= CONFIG ================= */
+const CONFIG = {
+  BOT_LINK: "https://t.me/YOUR_BOT_USERNAME",   // رابط البوت الخاص بك
+  ADSGRAM_BLOCK_ID: "",                          // ضع رقم البلوك من Adsgram (مثال: "1234") — فارغ = وضع تجريبي بدون إعلان
+  LEADERBOARD_URL: ""                            // اختياري: رابط API للترتيب (انظر README)
+};
+
+/* ============== WORD LIST (answers) ============== */
+const WORDS = ("about above actor adult after again agree ahead alarm album alive allow alone along alter among anger angle angry apart apple apply arena argue arise armed array arrow aside asset avoid awake award aware badly baker basic beach began begin being below bench berry birth black blade blame blank blast blaze bleed blend bless blind block blood bloom board boast bonus boost booth bound brain brand brave bread break breed brick bride brief bring broad brown brush build bunch burst buyer cabin cable camel candy carry carve catch cause chain chair chalk charm chart chase cheap check cheek cheer chess chest chief child chill choir chose civil claim class clean clear clerk click cliff climb clock close cloth cloud coach coast color couch could count court cover crack craft crane crash crazy cream crime cross crowd crown cruel crush curve cycle daily dairy dance dealt death debut delay depth diary dirty doubt dozen draft drain drama drank dream dress dried drift drill drink drive drown eager early earth eight elbow elder elect elite empty enemy enjoy enter equal error essay event every exact exist extra faith false fancy fault feast fence fever fiber field fifth fifty fight final first flame flash fleet flesh float flood floor flour fluid focus force forge forth forum found frame fresh front frost fruit funny ghost giant given glass globe glory goose grace grade grain grand grant grape graph grasp grass grave great green greet grief group guard guess guest guide habit happy harsh heart heavy hello hence honey honor horse hotel house human humor ideal image imply index inner input irony issue ivory jelly jewel joint judge juice knife knock known label labor large laser later laugh layer learn lease least leave legal lemon level light limit linen liver lobby local logic loose lover lower loyal lucky lunch magic major maker march match maybe mayor meant medal media melon mercy merge merit metal meter might minor minus mixed model money month moral motor mount mouse mouth movie music naked nerve never newly night noble noise north novel nurse ocean offer often olive onion opera orbit order other ought outer owner oxide paint panel paper party pasta patch pause peace pearl phase phone photo piano piece pilot pitch pizza place plain plane plant plate plaza point polar pound power press price pride prime print prior prize proof proud prove pulse punch pupil queen query quest quick quiet quite quota quote radio raise rally ranch range rapid ratio reach react ready realm rebel refer relax reply rider ridge rifle right rigid rival river roast robot rocky rough round route royal rural salad sauce scale scare scene scope score scout screw sense serve seven shade shake shall shape share sharp sheep sheet shelf shell shift shine shirt shock shoot shore short shout shown sight silly since sixth skill skirt sleep slice slide small smart smile smoke snake solar solid solve sorry sound south space spare speak speed spell spend spice spike split spoke sport staff stage stair stake stamp stand stare start state steam steel steep steer stick still stock stone stood store storm story stove strip stuck study stuff style sugar suite sunny super sweet swept swift swing sword table taste teach tenth thank theme there thick thing think third those three threw throw thumb tiger tight timer tired title toast today token tooth topic total touch tough tower toxic trace track trade trail train trait trash treat trend trial tribe trick troop truck truly trunk trust truth twice twist ultra uncle under union unite unity until upper upset urban usage usual valid value video virus visit vital vivid vocal voice waste watch water weary weave wheel where which while white whole whose width woman world worry worse worst worth would wound write wrong yacht young youth zebra").split(" ");
+
+/* ============== STATE ============== */
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor("#121213");tg.setBackgroundColor("#121213");}catch(e){} }
+
+const DAY = Math.floor(Date.now() / 86400000);             // نفس الكلمة للجميع (UTC)
+const params = new URLSearchParams(location.search);
+let challengeWord = null;                                   // وضع تحدي صديق
+if (params.get("c")) { try { const w = atob(params.get("c")).toLowerCase(); if (/^[a-z]{5}$/.test(w)) challengeWord = w; } catch(e){} }
+const ANSWER = challengeWord || WORDS[(DAY * 7919) % WORDS.length];
+const MODE = challengeWord ? "challenge" : "daily";
+const KEY = "dw_" + MODE + "_" + (challengeWord || DAY);
+
+let S = load(KEY, { guesses: [], over: false, won: false, hintsUsed: [] });
+let cur = "";
+let stats = load("dw_stats", { played: 0, wins: 0, streak: 0, best: 0, lastWin: -1, hints: 1 });
+
+function load(k, d){ try{ return JSON.parse(localStorage.getItem(k)) || d; }catch(e){ return d; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); localStorage.setItem("dw_stats", JSON.stringify(stats)); }catch(e){} }
+
+/* ============== UI BUILD ============== */
+const board = document.getElementById("board");
+for (let r = 0; r < 6; r++) {
+  const row = document.createElement("div"); row.className = "row";
+  for (let c = 0; c < 5; c++) { const t = document.createElement("div"); t.className = "tile"; row.appendChild(t); }
+  board.appendChild(row);
+}
+const rows = [...board.children];
+
+const LAYOUT = ["qwertyuiop", "asdfghjkl", "↵zxcvbnm⌫"];
+const kb = document.getElementById("kb");
+LAYOUT.forEach(line => {
+  const d = document.createElement("div"); d.className = "krow";
+  [...line].forEach(ch => {
+    const b = document.createElement("button");
+    b.className = "key" + (ch === "↵" || ch === "⌫" ? " wide" : "");
+    b.textContent = ch === "↵" ? "enter" : ch;
+    b.dataset.k = ch;
+    b.onclick = () => press(ch);
+    d.appendChild(b);
+  });
+  kb.appendChild(d);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter") press("↵");
+  else if (e.key === "Backspace") press("⌫");
+  else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toLowerCase());
+});
+
+/* ============== LOGIC ============== */
+function evaluate(guess) {
+  const res = Array(5).fill("absent"), pool = {};
+  for (let i = 0; i < 5; i++) { if (guess[i] === ANSWER[i]) res[i] = "correct"; else pool[ANSWER[i]] = (pool[ANSWER[i]] || 0) + 1; }
+  for (let i = 0; i < 5; i++) if (res[i] !== "correct" && pool[guess[i]] > 0) { res[i] = "present"; pool[guess[i]]--; }
+  return res;
+}
+
+function render() {
+  rows.forEach((row, r) => {
+    [...row.children].forEach((t, c) => {
+      t.className = "tile"; t.textContent = "";
+      if (r < S.guesses.length) {
+        const g = S.guesses[r], ev = evaluate(g);
+        t.textContent = g[c]; t.classList.add("filled", ev[c]);
+      } else if (r === S.guesses.length && !S.over) {
+        if (cur[c]) { t.textContent = cur[c]; t.classList.add("filled"); }
+        else if (S.hintsUsed.includes(c)) { t.textContent = ANSWER[c]; t.classList.add("hint"); }
+      }
+    });
+  });
+  // keyboard colors
+  const best = {};
+  S.guesses.forEach(g => evaluate(g).forEach((s, i) => {
+    const ch = g[i], rank = { absent: 1, present: 2, correct: 3 };
+    if (!best[ch] || rank[s] > rank[best[ch]]) best[ch] = s;
+  }));
+  document.querySelectorAll(".key").forEach(k => { k.classList.remove("correct", "present", "absent"); if (best[k.dataset.k]) k.classList.add(best[k.dataset.k]); });
+  document.getElementById("streak").textContent = "🔥 " + stats.streak;
+  document.getElementById("hints").textContent = "💡 " + stats.hints;
+}
+
+function toast(t) { const m = document.getElementById("msg"); m.textContent = t; clearTimeout(toast.t); toast.t = setTimeout(() => m.textContent = "", 2000); }
+function shake() { const r = rows[S.guesses.length]; r.classList.add("shake"); setTimeout(() => r.classList.remove("shake"), 400); }
+
+function press(k) {
+  if (S.over) return;
+  if (k === "⌫") cur = cur.slice(0, -1);
+  else if (k === "↵") return submit();
+  else if (cur.length < 5) cur += k;
+  render();
+}
+
+async function isWord(w) {
+  if (WORDS.includes(w)) return true;
+  try {
+    const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 2500);
+    const r = await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + w, { signal: ctrl.signal });
+    return r.ok;
+  } catch (e) { return true; }  // لو تعذر الفحص نقبل الكلمة
+}
+
+async function submit() {
+  if (cur.length < 5) { toast("Not enough letters"); shake(); return; }
+  if (!(await isWord(cur))) { toast("Not in word list"); shake(); return; }
+  S.guesses.push(cur);
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
+  const won = cur === ANSWER;
+  cur = ""; S.hintsUsed = [];
+  if (won || S.guesses.length === 6) finish(won);
+  save(); render();
+  if (S.over) setTimeout(showResult, 600);
+}
+
+function finish(won) {
+  S.over = true; S.won = won;
+  if (MODE === "daily") {
+    stats.played++;
+    if (won) {
+      stats.wins++;
+      stats.streak = (stats.lastWin === DAY - 1 || stats.lastWin === DAY) ? stats.streak + 1 : 1;
+      stats.lastWin = DAY; stats.best = Math.max(stats.best, stats.streak);
+      stats.hints += 1;                       // مكافأة تلميح عند الفوز
+    } else stats.streak = 0;
+    submitScore();
+  }
+}
+
+/* ============== HINT (rewarded ad) ============== */
+document.getElementById("hintBtn").onclick = async () => {
+  if (S.over) return;
+  const useHint = () => {
+    const known = new Set(S.guesses.flatMap(g => [...g].map((ch, i) => ch === ANSWER[i] ? i : -1)).filter(i => i >= 0));
+    const free = [0, 1, 2, 3, 4].filter(i => !known.has(i) && !S.hintsUsed.includes(i));
+    if (!free.length) return toast("No more hints needed!");
+    S.hintsUsed.push(free[Math.floor(Math.random() * free.length)]); save(); render();
+  };
+  if (stats.hints > 0) { stats.hints--; useHint(); return; }
+  // لا توجد تلميحات: شاهد إعلاناً للحصول على واحد
+  if (CONFIG.ADSGRAM_BLOCK_ID && window.Adsgram) {
+    try {
+      const res = await window.Adsgram.init({ blockId: CONFIG.ADSGRAM_BLOCK_ID }).show();
+      if (res && res.done) { useHint(); toast("Thanks for watching! 💡"); }
+    } catch (e) { toast("No ad available, try later"); }
+  } else { useHint(); toast("Demo mode: ad skipped"); }
+};
+
+/* ============== RESULT / SHARE ============== */
+function emojiGrid() {
+  return S.guesses.map(g => evaluate(g).map(s => s === "correct" ? "🟩" : s === "present" ? "🟨" : "⬛").join("")).join("\n");
+}
+function shareText() {
+  const n = S.won ? S.guesses.length : "X";
+  return `Daily Word ${MODE === "daily" ? "#" + (DAY - 20000) : "(challenge)"} ${n}/6\n\n${emojiGrid()}\n\nCan you beat me? 👇`;
+}
+function share() {
+  const url = "https://t.me/share/url?url=" + encodeURIComponent(CONFIG.BOT_LINK) + "&text=" + encodeURIComponent(shareText());
+  if (tg) tg.openTelegramLink(url); else window.open(url, "_blank");
+}
+function challenge() {
+  const w = prompt("Type a secret 5-letter word for your friend:");
+  if (!w || !/^[a-zA-Z]{5}$/.test(w)) return alert("Please enter exactly 5 letters.");
+  const link = CONFIG.BOT_LINK + "?startapp=" + btoa(w.toLowerCase()).replace(/=/g, "");
+  const url = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent("I challenge you! Guess my secret word 🧩");
+  if (tg) tg.openTelegramLink(url); else window.open(url, "_blank");
+}
+// دعم startapp
+if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param && !challengeWord) {
+  try { let p = tg.initDataUnsafe.start_param; const w = atob(p).toLowerCase(); if (/^[a-z]{5}$/.test(w)) location.search = "?c=" + p; } catch (e) {}
+}
+
+function showResult() {
+  const card = document.getElementById("card");
+  const wr = stats.played ? Math.round(100 * stats.wins / stats.played) : 0;
+  card.innerHTML = `
+    <h2>${S.over ? (S.won ? "🎉 You got it!" : "The word was " + ANSWER.toUpperCase()) : "Statistics"}</h2>
+    <div class="stats">
+      <div><b>${stats.played}</b><span>Played</span></div>
+      <div><b>${wr}%</b><span>Win rate</span></div>
+      <div><b>${stats.streak}</b><span>Streak</span></div>
+      <div><b>${stats.best}</b><span>Best</span></div>
+    </div>
+    <div id="lb"></div>
+    ${S.over ? '<button class="act" style="width:100%;margin-bottom:8px" onclick="share()">📤 Share result</button>' : ""}
+    <button class="act alt" style="width:100%;margin-bottom:8px" onclick="challenge()">⚔️ Challenge a friend</button>
+    <button class="act alt" style="width:100%" onclick="document.getElementById('modal').classList.remove('show')">Close</button>`;
+  document.getElementById("modal").classList.add("show");
+  loadLeaderboard();
+}
+document.getElementById("statsBtn").onclick = showResult;
+
+/* ============== LEADERBOARD (optional) ============== */
+function userInfo() { const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user; return u ? { id: u.id, name: u.first_name } : null; }
+async function submitScore() {
+  if (!CONFIG.LEADERBOARD_URL || !userInfo()) return;
+  try { await fetch(CONFIG.LEADERBOARD_URL + "/score", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...userInfo(), streak: stats.streak, wins: stats.wins }) }); } catch (e) {}
+}
+async function loadLeaderboard() {
+  const el = document.getElementById("lb"); if (!el || !CONFIG.LEADERBOARD_URL) return;
+  try {
+    const r = await fetch(CONFIG.LEADERBOARD_URL + "/top"); const list = await r.json();
+    el.innerHTML = "<b>🏆 Top players</b>" + list.slice(0, 10).map((p, i) => `<div><span>${i + 1}. ${p.name}</span><span>🔥 ${p.streak}</span></div>`).join("");
+  } catch (e) {}
+}
+
+/* ============== INIT ============== */
+if (MODE === "challenge") toast("⚔️ Challenge mode!");
+render();
+if (S.over) setTimeout(showResult, 400);
+</script>
+</body>
+</html>
