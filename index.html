@@ -232,11 +232,38 @@ function share() {
   if (tg) tg.openTelegramLink(url); else window.open(url, "_blank");
 }
 function challenge() {
-  const w = prompt("Type a secret 5-letter word for your friend:");
-  if (!w || !/^[a-zA-Z]{5}$/.test(w)) return alert("Please enter exactly 5 letters.");
-  const link = CONFIG.BOT_LINK + "?startapp=" + btoa(w.toLowerCase()).replace(/=/g, "");
-  const url = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent("I challenge you! Guess my secret word 🧩");
-  if (tg) tg.openTelegramLink(url); else window.open(url, "_blank");
+  const card = document.getElementById("card");
+  card.innerHTML = `
+    <h2>⚔️ Challenge</h2>
+    <p style="font-size:14px;color:#bbb;margin:6px 0">Type a secret 5-letter word for your friend:</p>
+    <input id="cw" maxlength="5" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false"
+      style="width:100%;padding:12px;font-size:22px;text-align:center;letter-spacing:6px;text-transform:uppercase;border-radius:10px;border:1px solid #555;background:#121213;color:#fff;margin:8px 0">
+    <button class="act" style="width:100%;margin-bottom:8px" onclick="makeChallenge()">Create link</button>
+    <button class="act alt" style="width:100%" onclick="showResult()">Back</button>`;
+  setTimeout(() => { const i = document.getElementById("cw"); if (i) i.focus(); }, 150);
+}
+function makeChallenge() {
+  const w = (document.getElementById("cw").value || "").trim().toLowerCase();
+  if (!/^[a-z]{5}$/.test(w)) return alert("Please enter exactly 5 letters (a-z).");
+  const link = CONFIG.BOT_LINK + "?startapp=" + btoa(w).replace(/=/g, "");
+  const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(link) + "&text=" + encodeURIComponent("I challenge you! Guess my secret word 🧩");
+  const card = document.getElementById("card");
+  card.innerHTML = `
+    <h2>Link ready ✅</h2>
+    <div style="word-break:break-all;font-size:13px;background:#121213;padding:10px;border-radius:10px;margin:10px 0;color:#ccc">${link}</div>
+    <button class="act" id="sendBtn" style="width:100%;margin-bottom:8px">📤 Send in Telegram</button>
+    <button class="act alt" id="copyBtn" style="width:100%;margin-bottom:8px">📋 Copy link</button>
+    <button class="act alt" style="width:100%" onclick="showResult()">Back</button>`;
+  document.getElementById("sendBtn").onclick = () => { if (tg) tg.openTelegramLink(shareUrl); else window.open(shareUrl, "_blank"); };
+  document.getElementById("copyBtn").onclick = async () => {
+    const btn = document.getElementById("copyBtn");
+    try { await navigator.clipboard.writeText(link); btn.textContent = "✅ Copied!"; }
+    catch (e) {
+      const ta = document.createElement("textarea"); ta.value = link; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); btn.textContent = "✅ Copied!"; } catch (e2) { btn.textContent = "Copy manually ↑"; }
+      ta.remove();
+    }
+  };
 }
 // دعم startapp
 if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param && !challengeWord) {
